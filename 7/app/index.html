@@ -9,10 +9,8 @@
     .gallery-item { text-align: center; }
     .gallery-item img {
       width: 160px; height: 120px;
-      object-fit: cover;
-      border-radius: 8px;
-      background: #ddd;
-      display: block;
+      object-fit: cover; border-radius: 8px;
+      display: block; background: #ddd;
     }
     .gallery-item figcaption { margin-top: 6px; font-size: 0.9em; color: #555; }
     #selected { margin-top: 24px; font-size: 1.1em; min-height: 28px; }
@@ -21,39 +19,45 @@
 <body>
   <h1>사진 갤러리</h1>
   <div class="gallery">
+
     <figure class="gallery-item">
-      <!-- 실제 이미지 대신 SVG placeholder 사용 -->
-      <svg width="160" height="120" xmlns="http://www.w3.org/2000/svg"
-           role="img" alt="산 풍경"
-           style="background:#8fb4d8;border-radius:8px;cursor:pointer"
-           onclick="select('산 풍경')">
-        <text x="50%" y="50%" text-anchor="middle" dy=".3em" fill="white" font-size="14">🏔️</text>
-      </svg>
-      <img src="" alt="산 풍경" width="0" height="0" style="display:none" />
+      <!--
+        SVG 에는 aria-hidden="true" 를 줘서 접근성 트리에서 제외.
+        alt 텍스트는 <img> 태그에만 남긴다.
+        → get_by_alt_text() 가 img 하나만 찾도록 수정.
+      -->
+      <img
+        src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='120'%3E%3Crect width='160' height='120' fill='%238fb4d8' rx='8'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='white' font-size='32'%3E%F0%9F%8F%94%EF%B8%8F%3C/text%3E%3C/svg%3E"
+        alt="산 풍경"
+        width="160" height="120"
+        style="cursor:pointer; border-radius:8px;"
+        onclick="select('산 풍경')"
+      />
       <figcaption>산 풍경</figcaption>
     </figure>
 
     <figure class="gallery-item">
-      <svg width="160" height="120" xmlns="http://www.w3.org/2000/svg"
-           role="img" alt="바다 풍경"
-           style="background:#5b9bd5;border-radius:8px;cursor:pointer"
-           onclick="select('바다 풍경')">
-        <text x="50%" y="50%" text-anchor="middle" dy=".3em" fill="white" font-size="14">🌊</text>
-      </svg>
-      <img src="" alt="바다 풍경" width="0" height="0" style="display:none" />
+      <img
+        src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='120'%3E%3Crect width='160' height='120' fill='%235b9bd5' rx='8'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='white' font-size='32'%3E%F0%9F%8C%8A%3C/text%3E%3C/svg%3E"
+        alt="바다 풍경"
+        width="160" height="120"
+        style="cursor:pointer; border-radius:8px;"
+        onclick="select('바다 풍경')"
+      />
       <figcaption>바다 풍경</figcaption>
     </figure>
 
     <figure class="gallery-item">
-      <svg width="160" height="120" xmlns="http://www.w3.org/2000/svg"
-           role="img" alt="숲 풍경"
-           style="background:#5a9e6f;border-radius:8px;cursor:pointer"
-           onclick="select('숲 풍경')">
-        <text x="50%" y="50%" text-anchor="middle" dy=".3em" fill="white" font-size="14">🌲</text>
-      </svg>
-      <img src="" alt="숲 풍경" width="0" height="0" style="display:none" />
+      <img
+        src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='120'%3E%3Crect width='160' height='120' fill='%235a9e6f' rx='8'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='white' font-size='32'%3E%F0%9F%8C%B2%3C/text%3E%3C/svg%3E"
+        alt="숲 풍경"
+        width="160" height="120"
+        style="cursor:pointer; border-radius:8px;"
+        onclick="select('숲 풍경')"
+      />
       <figcaption>숲 풍경</figcaption>
     </figure>
+
   </div>
 
   <p id="selected"></p>
