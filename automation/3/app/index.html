@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>칸반 보드</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: sans-serif; margin: 0; padding: 30px 20px; background: #f0f2f5; }
+    h1 { font-size: 1.3em; margin-bottom: 20px; }
+
+    .board {
+      display: flex; gap: 16px; align-items: flex-start;
+    }
+    .column {
+      background: #ebecf0; border-radius: 8px;
+      padding: 10px; width: 220px; min-height: 300px;
+    }
+    .column-header {
+      font-weight: bold; font-size: 13px; color: #333;
+      padding: 4px 6px 10px; display: flex;
+      justify-content: space-between; align-items: center;
+    }
+    .column-header .count {
+      background: #c1c7d0; border-radius: 10px;
+      padding: 1px 7px; font-size: 12px; font-weight: 400;
+    }
+    .card-list {
+      min-height: 40px; display: flex;
+      flex-direction: column; gap: 8px;
+    }
+    .card-list.drag-over {
+      background: rgba(0,102,204,0.08);
+      border-radius: 6px;
+    }
+
+    .card {
+      background: white; border-radius: 6px;
+      padding: 10px 12px; font-size: 13px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+      cursor: grab; user-select: none;
+      border-left: 3px solid transparent;
+    }
+    .card:active { cursor: grabbing; }
+    .card.dragging { opacity: 0.4; }
+    .card[data-priority="high"]   { border-left-color: #e34935; }
+    .card[data-priority="medium"] { border-left-color: #f79009; }
+    .card[data-priority="low"]    { border-left-color: #22a06b; }
+
+    .card-title { font-weight: 500; margin-bottom: 4px; }
+    .card-meta { font-size: 11px; color: #888; display: flex; gap: 8px; }
+    .priority-badge {
+      padding: 1px 6px; border-radius: 3px; font-size: 10px; font-weight: 600;
+    }
+    .priority-badge.high   { background: #ffeceb; color: #e34935; }
+    .priority-badge.medium { background: #fff7d6; color: #974f0c; }
+    .priority-badge.low    { background: #dcfff1; color: #006644; }
+
+    #move-log {
+      margin-top: 20px; padding: 10px 14px;
+      background: white; border-radius: 6px; font-size: 12px;
+      color: #555; min-height: 36px;
+    }
+    #move-log span { color: #0066cc; font-weight: 500; }
+  </style>
+</head>
+<body>
+  <h1>칸반 보드</h1>
+
+  <div class="board">
+    <!-- TODO 컬럼 -->
+    <div class="column" id="col-todo" data-col="todo">
+      <div class="column-header">
+        할 일 <span class="count" id="count-todo">3</span>
+      </div>
+      <div class="card-list" id="list-todo">
+        <div class="card" draggable="true"
+             data-id="card-1" data-priority="high">
+          <div class="card-title">로그인 기능 구현</div>
+          <div class="card-meta">
+            <span class="priority-badge high">높음</span>
+            <span>BE팀</span>
+          </div>
+        </div>
+        <div class="card" draggable="true"
+             data-id="card-2" data-priority="medium">
+          <div class="card-title">대시보드 UI 개선</div>
+          <div class="card-meta">
+            <span class="priority-badge medium">중간</span>
+            <span>FE팀</span>
+          </div>
+        </div>
+        <div class="card" draggable="true"
+             data-id="card-3" data-priority="low">
+          <div class="card-title">문서 업데이트</div>
+          <div class="card-meta">
+            <span class="priority-badge low">낮음</span>
+            <span>전체</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- IN PROGRESS 컬럼 -->
+    <div class="column" id="col-progress" data-col="progress">
+      <div class="column-header">
+        진행 중 <span class="count" id="count-progress">1</span>
+      </div>
+      <div class="card-list" id="list-progress">
+        <div class="card" draggable="true"
+             data-id="card-4" data-priority="high">
+          <div class="card-title">결제 API 연동</div>
+          <div class="card-meta">
+            <span class="priority-badge high">높음</span>
+            <span>BE팀</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DONE 컬럼 -->
+    <div class="column" id="col-done" data-col="done">
+      <div class="column-header">
+        완료 <span class="count" id="count-done">1</span>
+      </div>
+      <div class="card-list" id="list-done">
+        <div class="card" draggable="true"
+             data-id="card-5" data-priority="low">
+          <div class="card-title">초기 환경 설정</div>
+          <div class="card-meta">
+            <span class="priority-badge low">낮음</span>
+            <span>DevOps</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="move-log">카드를 드래그해서 이동하세요.</div>
+
+  <script>
+    let dragCard = null;
+
+    document.querySelectorAll('.card').forEach(card => {
+      card.addEventListener('dragstart', e => {
+        dragCard = card;
+        card.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', card.dataset.id);
+      });
+      card.addEventListener('dragend', () => {
+        card.classList.remove('dragging');
+        dragCard = null;
+      });
+    });
+
+    document.querySelectorAll('.card-list').forEach(list => {
+      list.addEventListener('dragover', e => {
+        e.preventDefault();
+        list.classList.add('drag-over');
+      });
+      list.addEventListener('dragleave', () => list.classList.remove('drag-over'));
+      list.addEventListener('drop', e => {
+        e.preventDefault();
+        list.classList.remove('drag-over');
+        if (dragCard) {
+          const oldCol = dragCard.closest('.column').dataset.col;
+          list.appendChild(dragCard);
+          const newCol = list.closest('.column').dataset.col;
+          updateCounts();
+          const title = dragCard.querySelector('.card-title').textContent;
+          const log = document.getElementById('move-log');
+          log.innerHTML = `<span>${title}</span> 이동: ${colLabel(oldCol)} → ${colLabel(newCol)}`;
+        }
+      });
+    });
+
+    function colLabel(col) {
+      return { todo: '할 일', progress: '진행 중', done: '완료' }[col] || col;
+    }
+
+    function updateCounts() {
+      ['todo', 'progress', 'done'].forEach(col => {
+        const count = document.getElementById('list-' + col).children.length;
+        document.getElementById('count-' + col).textContent = count;
+      });
+    }
+  </script>
+</body>
+</html>

@@ -61,6 +61,8 @@ fi
 
 if [[ "$1" == "all" ]]; then
     PROBLEMS=(1 2 3 4 5 6 7 8 9 10)
+elif [[ "$1" == "automation" ]]; then
+    PROBLEMS=(automation/1 automation/2 automation/3 automation/4 automation/5)
 else
     PROBLEMS=("$@")
 fi
@@ -76,7 +78,14 @@ run_problem() {
     local DIR="$ROOT/$NUM"
     local APP_DIR="$DIR/app"
     local TEST_FILE="$DIR/test_solution.py"
-    local PORT=$(( BASE_PORT + NUM ))
+    # automation/N → 포트 8200+N, 일반 N → BASE_PORT+N
+    local PORT
+    if [[ "$NUM" == automation/* ]]; then
+        local SUB="${NUM#automation/}"
+        PORT=$(( 8200 + SUB ))
+    else
+        PORT=$(( BASE_PORT + NUM ))
+    fi
     local URL="http://${HOST}:${PORT}"
 
     echo ""

@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>리치 텍스트 에디터</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: sans-serif; max-width: 720px; margin: 40px auto; padding: 0 20px; }
+    h1 { font-size: 1.4em; margin-bottom: 16px; }
+
+    .toolbar {
+      display: flex; gap: 4px; padding: 8px;
+      border: 1px solid #ddd; border-bottom: none;
+      border-radius: 6px 6px 0 0; background: #f8f8f8;
+    }
+    .toolbar button {
+      padding: 4px 10px; border: 1px solid #ccc;
+      border-radius: 4px; background: white;
+      cursor: pointer; font-size: 13px;
+    }
+    .toolbar button:hover { background: #e8e8e8; }
+    .toolbar button.active { background: #0066cc; color: white; border-color: #0066cc; }
+
+    #editor {
+      min-height: 200px;
+      border: 1px solid #ddd;
+      border-radius: 0 0 6px 6px;
+      padding: 16px;
+      font-size: 15px;
+      line-height: 1.7;
+      outline: none;
+    }
+    #editor:focus { border-color: #0066cc; box-shadow: 0 0 0 2px rgba(0,102,204,0.15); }
+    #editor [data-placeholder]:empty::before {
+      content: attr(data-placeholder);
+      color: #aaa;
+      pointer-events: none;
+    }
+
+    .char-count {
+      text-align: right; font-size: 12px;
+      color: #888; margin-top: 6px;
+    }
+    .char-count.warn { color: #cc4400; }
+
+    #output {
+      margin-top: 20px; padding: 12px;
+      background: #f5f5f5; border-radius: 6px;
+      font-size: 13px; display: none;
+    }
+    #output.show { display: block; }
+    #output pre { margin: 0; white-space: pre-wrap; word-break: break-all; }
+
+    .btn-row { margin-top: 12px; display: flex; gap: 8px; }
+    .btn-row button { padding: 8px 20px; cursor: pointer; border-radius: 4px; border: 1px solid #ccc; }
+    #btn-save { background: #0066cc; color: white; border-color: #0066cc; }
+    #btn-clear { background: white; }
+    #saved-msg { display: none; color: green; align-self: center; font-size: 14px; }
+    #saved-msg.show { display: inline; }
+  </style>
+</head>
+<body>
+  <h1>리치 텍스트 에디터</h1>
+
+  <div class="toolbar">
+    <button id="btn-bold"   data-cmd="bold"          title="굵게">B</button>
+    <button id="btn-italic" data-cmd="italic"        title="기울임"><i>I</i></button>
+    <button id="btn-ul"     data-cmd="insertUnorderedList" title="목록">• 목록</button>
+    <button id="btn-h2"     data-cmd="h2"            title="제목">H2</button>
+  </div>
+
+  <div
+    id="editor"
+    contenteditable="true"
+    role="textbox"
+    aria-multiline="true"
+    aria-label="본문 편집기"
+    data-placeholder="여기에 내용을 입력하세요..."
+  ></div>
+
+  <div class="char-count">
+    <span id="char-num">0</span> / 500자
+  </div>
+
+  <div class="btn-row">
+    <button id="btn-save">저장</button>
+    <button id="btn-clear">초기화</button>
+    <span id="saved-msg">✓ 저장되었습니다</span>
+  </div>
+
+  <div id="output">
+    <strong>저장된 HTML:</strong>
+    <pre id="output-html"></pre>
+    <br>
+    <strong>순수 텍스트:</strong>
+    <pre id="output-text"></pre>
+  </div>
+
+  <script>
+    const editor   = document.getElementById('editor');
+    const charNum  = document.getElementById('char-num');
+    const savedMsg = document.getElementById('saved-msg');
+    const output   = document.getElementById('output');
+
+    // 글자 수 카운터
+    editor.addEventListener('input', () => {
+      const len = editor.innerText.replace(/\n$/, '').length;
+      charNum.textContent = len;
+      charNum.parentElement.className = 'char-count' + (len > 450 ? ' warn' : '');
+    });
+
+    // 툴바 버튼
+    document.querySelectorAll('.toolbar button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const cmd = btn.dataset.cmd;
+        if (cmd === 'h2') {
+          document.execCommand('formatBlock', false, 'h2');
+        } else {
+          document.execCommand(cmd);
+        }
+        editor.focus();
+        updateToolbarState();
+      });
+    });
+
+    function updateToolbarState() {
+      document.getElementById('btn-bold').classList.toggle('active', document.queryCommandState('bold'));
+      document.getElementById('btn-italic').classList.toggle('active', document.queryCommandState('italic'));
+    }
+
+    editor.addEventListener('keyup', updateToolbarState);
+    editor.addEventListener('mouseup', updateToolbarState);
+
+    // 저장
+    document.getElementById('btn-save').addEventListener('click', () => {
+      const html = editor.innerHTML;
+      const text = editor.innerText;
+      document.getElementById('output-html').textContent = html;
+      document.getElementById('output-text').textContent = text;
+      output.className = 'show';
+      savedMsg.className = 'show';
+      setTimeout(() => savedMsg.className = '', 2000);
+    });
+
+    // 초기화
+    document.getElementById('btn-clear').addEventListener('click', () => {
+      editor.innerHTML = '';
+      charNum.textContent = '0';
+      output.className = '';
+      savedMsg.className = '';
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>무한 스크롤 피드</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; }
+    h1 { font-size: 1.3em; margin-bottom: 16px; }
+
+    .feed-item {
+      border: 1px solid #e0e0e0; border-radius: 8px;
+      padding: 14px 16px; margin-bottom: 12px;
+      background: white;
+    }
+    .feed-item .author {
+      font-size: 12px; color: #888; margin-bottom: 6px;
+      display: flex; justify-content: space-between;
+    }
+    .feed-item .content { font-size: 14px; line-height: 1.6; }
+    .feed-item .tag {
+      display: inline-block; font-size: 11px;
+      background: #e8f0fe; color: #1a73e8;
+      padding: 2px 7px; border-radius: 10px; margin-top: 8px;
+    }
+    .feed-item[data-type="alert"] { border-left: 3px solid #e34935; }
+    .feed-item[data-type="notice"] { border-left: 3px solid #1a73e8; }
+    .feed-item[data-type="update"] { border-left: 3px solid #22a06b; }
+
+    #loader {
+      text-align: center; padding: 20px;
+      color: #888; font-size: 13px; display: none;
+    }
+    #loader.show { display: block; }
+    #end-msg {
+      text-align: center; padding: 20px;
+      color: #bbb; font-size: 13px; display: none;
+    }
+    #end-msg.show { display: block; }
+    #item-count {
+      font-size: 12px; color: #888; margin-bottom: 12px;
+    }
+    #filter-row { display: flex; gap: 6px; margin-bottom: 14px; }
+    #filter-row button {
+      padding: 4px 12px; border-radius: 14px; border: 1px solid #ccc;
+      background: white; cursor: pointer; font-size: 12px;
+    }
+    #filter-row button.active {
+      background: #1a73e8; color: white; border-color: #1a73e8;
+    }
+  </style>
+</head>
+<body>
+  <h1>무한 스크롤 피드</h1>
+
+  <div id="filter-row">
+    <button class="active" data-filter="all">전체</button>
+    <button data-filter="alert">알림</button>
+    <button data-filter="notice">공지</button>
+    <button data-filter="update">업데이트</button>
+  </div>
+
+  <div id="item-count">0개 항목</div>
+  <div id="feed"></div>
+  <div id="loader">불러오는 중...</div>
+  <div id="end-msg">모든 항목을 불러왔습니다.</div>
+
+  <script>
+    const ITEMS_PER_PAGE = 5;
+    const TOTAL_ITEMS = 20;
+    let page = 0;
+    let loading = false;
+    let currentFilter = 'all';
+
+    const DATA = Array.from({ length: TOTAL_ITEMS }, (_, i) => ({
+      id: i + 1,
+      type: ['alert', 'notice', 'update'][i % 3],
+      author: ['김개발', '이테스터', '박디자인', '최기획'][i % 4],
+      date: `2024-0${(i % 9) + 1}-${String((i % 28) + 1).padStart(2, '0')}`,
+      content: [
+        '새로운 배포가 완료되었습니다. 변경사항을 확인하세요.',
+        '정기 점검이 예정되어 있습니다. 서비스 이용에 참고 바랍니다.',
+        'v2.1.0 업데이트: 성능 개선 및 버그 수정이 포함되어 있습니다.',
+        'API 응답 속도가 개선되었습니다. 기존 대비 30% 향상.',
+        '보안 패치가 적용되었습니다. 즉시 업데이트를 권장합니다.',
+      ][i % 5],
+      tag: ['배포', '점검', '업데이트', 'API', '보안'][i % 5],
+    }));
+
+    function renderItem(item) {
+      const div = document.createElement('div');
+      div.className = 'feed-item';
+      div.dataset.type = item.type;
+      div.dataset.id = item.id;
+      div.innerHTML = `
+        <div class="author">
+          <span>${item.author}</span>
+          <span>${item.date}</span>
+        </div>
+        <div class="content">${item.content}</div>
+        <span class="tag">${item.tag}</span>
+      `;
+      return div;
+    }
+
+    function getFiltered() {
+      return currentFilter === 'all'
+        ? DATA
+        : DATA.filter(d => d.type === currentFilter);
+    }
+
+    function loadMore() {
+      if (loading) return;
+      const filtered = getFiltered();
+      const start = page * ITEMS_PER_PAGE;
+      if (start >= filtered.length) {
+        document.getElementById('end-msg').className = 'show';
+        return;
+      }
+      loading = true;
+      document.getElementById('loader').className = 'show';
+
+      setTimeout(() => {
+        const items = filtered.slice(start, start + ITEMS_PER_PAGE);
+        const feed  = document.getElementById('feed');
+        items.forEach(item => feed.appendChild(renderItem(item)));
+        page++;
+        loading = false;
+        document.getElementById('loader').className = '';
+        document.getElementById('item-count').textContent =
+          `${feed.children.length}개 항목 (전체 ${filtered.length}개)`;
+        if (page * ITEMS_PER_PAGE >= filtered.length) {
+          document.getElementById('end-msg').className = 'show';
+        }
+      }, 400);
+    }
+
+    // 무한 스크롤
+    window.addEventListener('scroll', () => {
+      const { scrollTop, scrollHeight, clientHeight } = document.documentElement;
+      if (scrollTop + clientHeight >= scrollHeight - 100) loadMore();
+    });
+
+    // 필터 버튼
+    document.querySelectorAll('#filter-row button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('#filter-row button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentFilter = btn.dataset.filter;
+        page = 0;
+        document.getElementById('feed').innerHTML = '';
+        document.getElementById('end-msg').className = '';
+        loadMore();
+      });
+    });
+
+    // 초기 로드
+    loadMore();
+  </script>
+</body>
+</html>

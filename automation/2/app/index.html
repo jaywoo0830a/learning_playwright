@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>코드 에디터</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: sans-serif; max-width: 760px; margin: 40px auto; padding: 0 20px; }
+    h1 { font-size: 1.4em; margin-bottom: 8px; }
+    .subtitle { color: #666; font-size: 13px; margin-bottom: 20px; }
+
+    .editor-wrap {
+      border: 1px solid #333; border-radius: 6px; overflow: hidden;
+    }
+    .editor-header {
+      background: #1e1e2e; color: #cdd6f4;
+      padding: 8px 14px; font-size: 13px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .lang-badge {
+      background: #313244; padding: 2px 8px;
+      border-radius: 4px; font-size: 11px; color: #89b4fa;
+    }
+
+    /* CodeMirror-style wrapper (shadow DOM 없이 흉내) */
+    .cm-editor {
+      position: relative;
+      background: #1e1e2e;
+    }
+    .cm-scroller {
+      display: flex; align-items: flex-start;
+      font-family: 'Courier New', monospace; font-size: 14px;
+      line-height: 1.6; min-height: 200px;
+    }
+    .cm-gutters {
+      background: #181825; color: #6c7086;
+      padding: 8px 12px 8px 8px;
+      border-right: 1px solid #313244;
+      user-select: none; min-width: 40px;
+      text-align: right;
+    }
+    .cm-content {
+      flex: 1; padding: 8px 12px; color: #cdd6f4;
+      outline: none; white-space: pre; overflow-x: auto;
+      caret-color: #cdd6f4;
+    }
+    .cm-content:empty::before {
+      content: "# 여기에 Python 코드를 입력하세요";
+      color: #6c7086;
+    }
+
+    /* 실제 textarea (숨김 — Playwright 가 이걸 통해 입력) */
+    #code-input {
+      position: absolute; top: 0; left: 0;
+      width: 100%; height: 100%;
+      opacity: 0; pointer-events: none;
+      resize: none; border: none;
+      font-family: monospace; font-size: 14px;
+    }
+
+    .toolbar-bottom {
+      background: #181825; padding: 8px 12px;
+      display: flex; gap: 8px; border-top: 1px solid #313244;
+    }
+    .toolbar-bottom button {
+      padding: 5px 14px; border-radius: 4px; border: none;
+      cursor: pointer; font-size: 13px;
+    }
+    #btn-run   { background: #a6e3a1; color: #1e1e2e; }
+    #btn-clear { background: #313244; color: #cdd6f4; }
+
+    #run-output {
+      margin-top: 16px; background: #11111b;
+      border: 1px solid #313244; border-radius: 6px;
+      padding: 12px 14px; color: #a6e3a1;
+      font-family: monospace; font-size: 13px;
+      min-height: 60px; display: none; white-space: pre-wrap;
+    }
+    #run-output.show { display: block; }
+    #run-output .error { color: #f38ba8; }
+
+    #line-count { color: #6c7086; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <h1>코드 에디터</h1>
+  <p class="subtitle">CodeMirror / Monaco 스타일 에디터 — 숨겨진 textarea 패턴</p>
+
+  <div class="editor-wrap">
+    <div class="editor-header">
+      <span>main.py</span>
+      <span class="lang-badge">Python</span>
+    </div>
+
+    <div class="cm-editor" id="cm-editor">
+      <!-- 실제 입력을 받는 숨김 textarea -->
+      <textarea
+        id="code-input"
+        aria-label="코드 입력창"
+        spellcheck="false"
+        autocomplete="off"
+      ></textarea>
+
+      <div class="cm-scroller">
+        <div class="cm-gutters" id="gutters">1</div>
+        <div
+          class="cm-content"
+          id="cm-display"
+          contenteditable="false"
+          aria-hidden="true"
+        ></div>
+      </div>
+    </div>
+
+    <div class="toolbar-bottom">
+      <button id="btn-run">▶ 실행</button>
+      <button id="btn-clear">초기화</button>
+      <span id="line-count">0 줄</span>
+    </div>
+  </div>
+
+  <pre id="run-output"></pre>
+
+  <script>
+    const textarea  = document.getElementById('code-input');
+    const display   = document.getElementById('cm-display');
+    const gutters   = document.getElementById('gutters');
+    const lineCount = document.getElementById('line-count');
+    const output    = document.getElementById('run-output');
+
+    function syncDisplay() {
+      const code  = textarea.value;
+      const lines = code.split('\n');
+
+      // 줄 번호 업데이트
+      gutters.innerHTML = lines.map((_, i) => i + 1).join('<br>');
+      lineCount.textContent = lines.length + ' 줄';
+
+      // 디스플레이 업데이트 (간단한 구문 강조)
+      display.textContent = code;
+    }
+
+    // cm-editor 클릭 시 숨겨진 textarea 활성화
+    document.getElementById('cm-editor').addEventListener('click', () => {
+      textarea.style.pointerEvents = 'auto';
+      textarea.focus();
+    });
+
+    textarea.addEventListener('input', syncDisplay);
+    textarea.addEventListener('focus', () => {
+      document.getElementById('cm-editor').style.outline = '2px solid #89b4fa';
+    });
+    textarea.addEventListener('blur', () => {
+      document.getElementById('cm-editor').style.outline = '';
+      textarea.style.pointerEvents = 'none';
+    });
+
+    // 실행 버튼 (시뮬레이션)
+    document.getElementById('btn-run').addEventListener('click', () => {
+      const code = textarea.value.trim();
+      if (!code) {
+        output.innerHTML = '<span class="error">오류: 코드가 없습니다.</span>';
+        output.className = 'show';
+        return;
+      }
+
+      // print() 문만 간단히 시뮬레이션
+      const prints = [...code.matchAll(/print\(["'](.+?)["']\)/g)];
+      if (prints.length > 0) {
+        output.textContent = prints.map(m => m[1]).join('\n');
+      } else {
+        output.textContent = '(출력 없음) 실행 완료';
+      }
+      output.className = 'show';
+    });
+
+    document.getElementById('btn-clear').addEventListener('click', () => {
+      textarea.value = '';
+      display.textContent = '';
+      gutters.textContent = '1';
+      lineCount.textContent = '0 줄';
+      output.className = '';
+      output.textContent = '';
+    });
+  </script>
+</body>
+</html>

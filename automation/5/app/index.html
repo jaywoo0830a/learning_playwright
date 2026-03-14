@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>멀티스텝 폼</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: sans-serif; max-width: 580px; margin: 40px auto; padding: 0 20px; }
+    h1 { font-size: 1.3em; margin-bottom: 20px; }
+
+    /* 스텝 인디케이터 */
+    .steps {
+      display: flex; gap: 0; margin-bottom: 28px;
+      counter-reset: step;
+    }
+    .step {
+      flex: 1; text-align: center; font-size: 12px; color: #888;
+      position: relative; padding-bottom: 8px;
+    }
+    .step::before {
+      counter-increment: step;
+      content: counter(step);
+      display: block; width: 28px; height: 28px;
+      background: #e0e0e0; border-radius: 50%;
+      line-height: 28px; margin: 0 auto 6px;
+      font-weight: 600; color: #888;
+    }
+    .step::after {
+      content: '';
+      position: absolute; top: 14px; left: 50%;
+      width: 100%; height: 2px; background: #e0e0e0; z-index: -1;
+    }
+    .step:last-child::after { display: none; }
+    .step.active::before { background: #0066cc; color: white; }
+    .step.active { color: #0066cc; font-weight: 500; }
+    .step.done::before { background: #22a06b; color: white; content: '✓'; }
+    .step.done { color: #22a06b; }
+
+    /* 스텝 패널 */
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 5px; }
+    .form-group input, .form-group select, .form-group textarea {
+      width: 100%; padding: 8px 10px; border: 1px solid #ccc;
+      border-radius: 6px; font-size: 14px;
+    }
+    .form-group input:focus, .form-group select:focus {
+      outline: none; border-color: #0066cc;
+      box-shadow: 0 0 0 2px rgba(0,102,204,0.15);
+    }
+
+    /* 아코디언 (스텝 2 내 FAQ) */
+    .accordion { margin: 16px 0; }
+    .accordion-item { border: 1px solid #e0e0e0; border-radius: 6px; margin-bottom: 6px; }
+    .accordion-header {
+      padding: 10px 14px; cursor: pointer;
+      font-size: 13px; font-weight: 500;
+      display: flex; justify-content: space-between; align-items: center;
+      user-select: none;
+    }
+    .accordion-header:hover { background: #f5f5f5; border-radius: 6px; }
+    .accordion-arrow { transition: transform 0.2s; }
+    .accordion-item.open .accordion-arrow { transform: rotate(180deg); }
+    .accordion-body { display: none; padding: 10px 14px; font-size: 13px; color: #555; line-height: 1.6; }
+    .accordion-item.open .accordion-body { display: block; }
+
+    /* 탭 (스텝 3 내) */
+    .tabs { border-bottom: 2px solid #e0e0e0; display: flex; gap: 4px; margin-bottom: 14px; }
+    .tab {
+      padding: 8px 16px; font-size: 13px; cursor: pointer;
+      border-radius: 4px 4px 0 0; color: #888;
+      border: 1px solid transparent; border-bottom: none;
+      margin-bottom: -2px;
+    }
+    .tab.active {
+      color: #0066cc; border-color: #e0e0e0;
+      border-bottom-color: white; background: white;
+    }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; font-size: 13px; color: #444; line-height: 1.7; }
+
+    .btn-row { display: flex; justify-content: space-between; margin-top: 20px; }
+    .btn-row button {
+      padding: 9px 22px; border-radius: 6px; border: 1px solid #ccc;
+      cursor: pointer; font-size: 14px;
+    }
+    #btn-next { background: #0066cc; color: white; border-color: #0066cc; }
+    #btn-prev { background: white; }
+    #btn-prev[disabled] { opacity: 0.4; cursor: not-allowed; }
+    #btn-submit { background: #22a06b; color: white; border-color: #22a06b; display: none; }
+    #btn-submit.show { display: inline-block; }
+    #btn-next.hide { display: none; }
+
+    #success {
+      display: none; text-align: center;
+      padding: 40px 20px; color: #22a06b;
+    }
+    #success.show { display: block; }
+    #success .icon { font-size: 48px; margin-bottom: 12px; }
+    .error-msg { color: #e34935; font-size: 12px; margin-top: 4px; display: none; }
+    .error-msg.show { display: block; }
+    input.error { border-color: #e34935; }
+  </style>
+</head>
+<body>
+  <h1>회원 가입 (멀티스텝)</h1>
+
+  <!-- 스텝 인디케이터 -->
+  <div class="steps">
+    <div class="step active" id="step-ind-1">기본 정보</div>
+    <div class="step" id="step-ind-2">약관 동의</div>
+    <div class="step" id="step-ind-3">요금제 선택</div>
+  </div>
+
+  <!-- 스텝 1: 기본 정보 -->
+  <div class="panel active" id="panel-1">
+    <div class="form-group">
+      <label for="name">이름</label>
+      <input id="name" type="text" placeholder="홍길동" />
+      <div class="error-msg" id="err-name">이름을 입력해주세요.</div>
+    </div>
+    <div class="form-group">
+      <label for="email">이메일</label>
+      <input id="email" type="email" placeholder="example@email.com" />
+      <div class="error-msg" id="err-email">올바른 이메일을 입력해주세요.</div>
+    </div>
+    <div class="form-group">
+      <label for="birth">생년월일</label>
+      <input id="birth" type="date" />
+    </div>
+  </div>
+
+  <!-- 스텝 2: 약관 동의 (아코디언 + 체크박스) -->
+  <div class="panel" id="panel-2">
+    <p style="font-size:13px;color:#555;margin-bottom:12px">
+      약관을 확인하고 동의해주세요.
+    </p>
+
+    <div class="accordion">
+      <div class="accordion-item" id="acc-terms">
+        <div class="accordion-header" onclick="toggleAcc('acc-terms')">
+          이용약관 <span class="accordion-arrow">▼</span>
+        </div>
+        <div class="accordion-body">
+          서비스 이용약관입니다. 회원은 본 약관을 읽고 동의한 후 서비스를 이용해야 합니다.
+          무단 복제, 배포, 전송은 금지되어 있으며 위반 시 법적 책임을 질 수 있습니다.
+        </div>
+      </div>
+      <div class="accordion-item" id="acc-privacy">
+        <div class="accordion-header" onclick="toggleAcc('acc-privacy')">
+          개인정보처리방침 <span class="accordion-arrow">▼</span>
+        </div>
+        <div class="accordion-body">
+          수집하는 개인정보: 이름, 이메일, 생년월일.
+          이용 목적: 서비스 제공, 고객 지원, 마케팅(선택).
+          보유 기간: 회원 탈퇴 시까지.
+        </div>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>
+        <input type="checkbox" id="chk-terms" />
+        이용약관에 동의합니다 (필수)
+      </label>
+      <div class="error-msg" id="err-terms">필수 항목입니다.</div>
+    </div>
+    <div class="form-group">
+      <label>
+        <input type="checkbox" id="chk-privacy" />
+        개인정보처리방침에 동의합니다 (필수)
+      </label>
+    </div>
+    <div class="form-group">
+      <label>
+        <input type="checkbox" id="chk-marketing" />
+        마케팅 수신에 동의합니다 (선택)
+      </label>
+    </div>
+  </div>
+
+  <!-- 스텝 3: 요금제 선택 (탭) -->
+  <div class="panel" id="panel-3">
+    <div class="tabs">
+      <div class="tab active" data-tab="free" onclick="switchTab('free')">무료</div>
+      <div class="tab" data-tab="basic" onclick="switchTab('basic')">베이직</div>
+      <div class="tab" data-tab="pro" onclick="switchTab('pro')">프로</div>
+    </div>
+    <div class="tab-panel active" id="tab-free">
+      <strong>무료 플랜</strong><br>
+      월 0원 · 기본 기능 · 1GB 저장공간 · 광고 포함
+    </div>
+    <div class="tab-panel" id="tab-basic">
+      <strong>베이직 플랜</strong><br>
+      월 9,900원 · 모든 기능 · 10GB 저장공간 · 광고 없음
+    </div>
+    <div class="tab-panel" id="tab-pro">
+      <strong>프로 플랜</strong><br>
+      월 29,900원 · 모든 기능 · 무제한 저장공간 · 우선 지원
+    </div>
+    <div class="form-group" style="margin-top:14px">
+      <label for="plan">선택한 요금제</label>
+      <select id="plan">
+        <option value="free">무료</option>
+        <option value="basic">베이직</option>
+        <option value="pro">프로</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- 성공 화면 -->
+  <div id="success">
+    <div class="icon">🎉</div>
+    <div style="font-size:18px;font-weight:600;margin-bottom:8px">가입 완료!</div>
+    <div id="success-detail" style="font-size:13px;color:#555"></div>
+  </div>
+
+  <!-- 버튼 -->
+  <div class="btn-row" id="btn-area">
+    <button id="btn-prev" disabled onclick="prevStep()">← 이전</button>
+    <button id="btn-next" onclick="nextStep()">다음 →</button>
+    <button id="btn-submit" onclick="submit()">가입 완료</button>
+  </div>
+
+  <script>
+    let currentStep = 1;
+    const TOTAL = 3;
+
+    function showStep(n) {
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      document.getElementById('panel-' + n).classList.add('active');
+
+      document.querySelectorAll('.step').forEach((s, i) => {
+        s.classList.remove('active', 'done');
+        if (i + 1 < n) s.classList.add('done');
+        else if (i + 1 === n) s.classList.add('active');
+      });
+
+      document.getElementById('btn-prev').disabled = n === 1;
+      document.getElementById('btn-next').className = n === TOTAL ? 'hide' : '';
+      document.getElementById('btn-submit').className = n === TOTAL ? 'show' : '';
+      currentStep = n;
+    }
+
+    function validate(step) {
+      let ok = true;
+      if (step === 1) {
+        const name  = document.getElementById('name').value.trim();
+        const email = document.getElementById('email').value.trim();
+        const errN  = document.getElementById('err-name');
+        const errE  = document.getElementById('err-email');
+        errN.className = name ? 'error-msg' : 'error-msg show';
+        document.getElementById('name').className = name ? '' : 'error';
+        const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+        errE.className = emailOk ? 'error-msg' : 'error-msg show';
+        document.getElementById('email').className = emailOk ? '' : 'error';
+        if (!name || !emailOk) ok = false;
+      }
+      if (step === 2) {
+        const terms = document.getElementById('chk-terms').checked;
+        const privacy = document.getElementById('chk-privacy').checked;
+        document.getElementById('err-terms').className = terms ? 'error-msg' : 'error-msg show';
+        if (!terms || !privacy) ok = false;
+      }
+      return ok;
+    }
+
+    function nextStep() {
+      if (!validate(currentStep)) return;
+      if (currentStep < TOTAL) showStep(currentStep + 1);
+    }
+    function prevStep() {
+      if (currentStep > 1) showStep(currentStep - 1);
+    }
+
+    function submit() {
+      const plan = document.getElementById('plan').value;
+      const name = document.getElementById('name').value;
+      document.getElementById('success-detail').textContent =
+        `${name}님, ${plan} 플랜으로 가입되었습니다.`;
+      document.getElementById('panel-3').style.display = 'none';
+      document.getElementById('btn-area').style.display = 'none';
+      document.getElementById('success').className = 'show';
+      document.querySelectorAll('.step').forEach(s => s.classList.add('done'));
+    }
+
+    function toggleAcc(id) {
+      document.getElementById(id).classList.toggle('open');
+    }
+
+    function switchTab(name) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      document.querySelector(`[data-tab="${name}"]`).classList.add('active');
+      document.getElementById('tab-' + name).classList.add('active');
+      document.getElementById('plan').value = name;
+    }
+  </script>
+</body>
+</html>
