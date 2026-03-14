@@ -1,0 +1,23 @@
+# 가상환경 (init.sh 가 자동 생성)
+.venv/
+
+# Python 캐시
+__pycache__/
+*.pyc
+*.pyo
+
+# pytest 캐시
+.pytest_cache/
+
+# Playwright 테스트 결과물
+test-results/
+playwright-report/
+
+# 스크린샷 스냅샷 (생성 후 커밋할 경우 이 줄 제거)
+**/snapshots/
+
+# macOS
+.DS_Store
+
+# 임시 서버 로그
+/tmp/pw_server_*.log

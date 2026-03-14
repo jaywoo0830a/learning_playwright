@@ -8,6 +8,7 @@
 #   bash run/test.sh all      # 전체 (1~10)
 #
 # 구조:
+#   .venv 가상환경의 Python / pytest 를 사용합니다.
 #   각 문제 폴더의 app/index.html 을 임시 HTTP 서버로 띄운 뒤
 #   test_solution.py 를 pytest로 실행합니다.
 #   테스트가 끝나면 서버를 자동으로 종료합니다.
@@ -15,7 +16,20 @@
 set -e
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+VENV="$ROOT/.venv"
 cd "$ROOT"
+
+# ── 가상환경 존재 확인 ─────────────────────────────────────
+if [[ ! -f "$VENV/bin/python" ]]; then
+    echo ""
+    echo "❌ 가상환경이 없습니다. 먼저 초기화를 실행하세요:"
+    echo "   bash run/init.sh"
+    echo ""
+    exit 1
+fi
+
+PYTHON="$VENV/bin/python"
+PYTEST="$VENV/bin/pytest"
 
 # ── 인자 처리 ──────────────────────────────────────────────
 if [[ $# -eq 0 ]]; then
@@ -63,8 +77,8 @@ run_problem() {
         return
     fi
 
-    # HTTP 서버 시작 (app/ 폴더를 정적 서빙)
-    python3 -m http.server "$PORT" \
+    # HTTP 서버 시작 — 가상환경 python 사용
+    "$PYTHON" -m http.server "$PORT" \
         --directory "$APP_DIR" \
         --bind 127.0.0.1 \
         > /tmp/pw_server_$NUM.log 2>&1 &
@@ -78,12 +92,12 @@ run_problem() {
         sleep 0.2
     done
 
-    # pytest 실행
-    # BASE_URL 환경변수로 각 문제의 서버 주소를 전달
+    # pytest 실행 — 가상환경 pytest 사용
     echo "  🌐 서버: http://127.0.0.1:$PORT"
+    echo "  🐍 가상환경: $VENV"
     echo ""
     if BASE_URL="http://127.0.0.1:$PORT" \
-       python3 -m pytest "$TEST_FILE" \
+       "$PYTEST" "$TEST_FILE" \
            --tb=short \
            --no-header \
            -q \
