@@ -28,6 +28,10 @@ def test_title_contains_playwright(page: Page, base_url: str):
     """페이지 타이틀에 'Playwright' 가 포함되어야 한다 (정규식)."""
     page.goto(base_url)
 
-    # TODO: re.compile() 을 사용해 타이틀에 "Playwright" 가 포함되는지 검증하세요
+    # re.compile("패턴") — 정규식 패턴 객체를 만드는 함수
+    #
+    # 문자열을 그냥 넘기면  → 전체 일치  ("나의 첫 Playwright 앱" 과 완전히 같아야 통과)
+    # re.compile() 로 넘기면 → 부분 포함  ("Playwright" 가 어딘가 있으면 통과)
+    #
+    # TODO: 타이틀에 "Playwright" 가 포함되는지 검증하세요
     # expect(page).to_have_title(re.compile(???))
-    raise NotImplementedError("TODO를 완성하세요")
