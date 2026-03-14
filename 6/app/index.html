@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>약관 동의</title>
+  <style>
+    body { font-family: sans-serif; max-width: 480px; margin: 60px auto; }
+    .checkbox-group { margin: 12px 0; }
+    label { cursor: pointer; user-select: none; }
+    input[type="checkbox"] { margin-right: 8px; }
+    button { margin-top: 20px; padding: 10px 24px; cursor: pointer; }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+    #summary { margin-top: 16px; color: #333; min-height: 24px; }
+  </style>
+</head>
+<body>
+  <h1>회원가입 약관</h1>
+
+  <div class="checkbox-group">
+    <label>
+      <input type="checkbox" id="chk-terms" name="terms" />
+      이용약관에 동의합니다 (필수)
+    </label>
+  </div>
+
+  <div class="checkbox-group">
+    <label>
+      <input type="checkbox" id="chk-privacy" name="privacy" />
+      개인정보 처리방침에 동의합니다 (필수)
+    </label>
+  </div>
+
+  <div class="checkbox-group">
+    <label>
+      <input type="checkbox" id="chk-marketing" name="marketing" />
+      마케팅 수신에 동의합니다 (선택)
+    </label>
+  </div>
+
+  <button id="submit-btn" disabled>가입하기</button>
+  <p id="summary"></p>
+
+  <script>
+    const required = ['chk-terms', 'chk-privacy'];
+    const btn = document.getElementById('submit-btn');
+    const summary = document.getElementById('summary');
+
+    function updateState() {
+      const allChecked = required.every(id => document.getElementById(id).checked);
+      btn.disabled = !allChecked;
+    }
+
+    document.querySelectorAll('input[type="checkbox"]').forEach(chk => {
+      chk.addEventListener('change', updateState);
+    });
+
+    btn.addEventListener('click', function() {
+      const marketing = document.getElementById('chk-marketing').checked;
+      summary.textContent = marketing
+        ? '가입 완료! 마케팅 수신에 동의하셨습니다.'
+        : '가입 완료! 필수 항목에만 동의하셨습니다.';
+    });
+  </script>
+</body>
+</html>

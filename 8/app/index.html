@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>할 일 목록</title>
+  <style>
+    body { font-family: sans-serif; max-width: 480px; margin: 60px auto; }
+    ul#todo-list { list-style: none; padding: 0; }
+    li { padding: 10px 14px; border: 1px solid #e0e0e0; border-radius: 6px;
+         margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+    li.done { text-decoration: line-through; color: #aaa; }
+    .add-row { display: flex; gap: 8px; margin-bottom: 16px; }
+    .add-row input { flex: 1; padding: 8px; }
+    .add-row button, li button { padding: 6px 14px; cursor: pointer; }
+    #count { font-size: 0.9em; color: #666; margin-bottom: 12px; }
+  </style>
+</head>
+<body>
+  <h1>할 일 목록</h1>
+  <div class="add-row">
+    <input type="text" id="new-item" placeholder="새 할 일 입력" />
+    <button id="add-btn">추가</button>
+  </div>
+  <p id="count">총 3개 항목</p>
+  <ul id="todo-list">
+    <li data-testid="todo-item">Playwright 설치하기 <button onclick="done(this)">완료</button></li>
+    <li data-testid="todo-item">첫 테스트 작성하기 <button onclick="done(this)">완료</button></li>
+    <li data-testid="todo-item">CI 연동하기 <button onclick="done(this)">완료</button></li>
+  </ul>
+
+  <script>
+    function done(btn) {
+      btn.parentElement.classList.toggle('done');
+    }
+
+    document.getElementById('add-btn').addEventListener('click', function() {
+      const input = document.getElementById('new-item');
+      const text  = input.value.trim();
+      if (!text) return;
+      const li = document.createElement('li');
+      li.setAttribute('data-testid', 'todo-item');
+      li.innerHTML = text + ' <button onclick="done(this)">완료</button>';
+      document.getElementById('todo-list').appendChild(li);
+      const count = document.querySelectorAll('[data-testid="todo-item"]').length;
+      document.getElementById('count').textContent = `총 ${count}개 항목`;
+      input.value = '';
+    });
+  </script>
+</body>
+</html>

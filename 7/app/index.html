@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>갤러리</title>
+  <style>
+    body { font-family: sans-serif; max-width: 600px; margin: 60px auto; }
+    .gallery { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 20px; }
+    .gallery-item { text-align: center; }
+    .gallery-item img {
+      width: 160px; height: 120px;
+      object-fit: cover;
+      border-radius: 8px;
+      background: #ddd;
+      display: block;
+    }
+    .gallery-item figcaption { margin-top: 6px; font-size: 0.9em; color: #555; }
+    #selected { margin-top: 24px; font-size: 1.1em; min-height: 28px; }
+  </style>
+</head>
+<body>
+  <h1>사진 갤러리</h1>
+  <div class="gallery">
+    <figure class="gallery-item">
+      <!-- 실제 이미지 대신 SVG placeholder 사용 -->
+      <svg width="160" height="120" xmlns="http://www.w3.org/2000/svg"
+           role="img" alt="산 풍경"
+           style="background:#8fb4d8;border-radius:8px;cursor:pointer"
+           onclick="select('산 풍경')">
+        <text x="50%" y="50%" text-anchor="middle" dy=".3em" fill="white" font-size="14">🏔️</text>
+      </svg>
+      <img src="" alt="산 풍경" width="0" height="0" style="display:none" />
+      <figcaption>산 풍경</figcaption>
+    </figure>
+
+    <figure class="gallery-item">
+      <svg width="160" height="120" xmlns="http://www.w3.org/2000/svg"
+           role="img" alt="바다 풍경"
+           style="background:#5b9bd5;border-radius:8px;cursor:pointer"
+           onclick="select('바다 풍경')">
+        <text x="50%" y="50%" text-anchor="middle" dy=".3em" fill="white" font-size="14">🌊</text>
+      </svg>
+      <img src="" alt="바다 풍경" width="0" height="0" style="display:none" />
+      <figcaption>바다 풍경</figcaption>
+    </figure>
+
+    <figure class="gallery-item">
+      <svg width="160" height="120" xmlns="http://www.w3.org/2000/svg"
+           role="img" alt="숲 풍경"
+           style="background:#5a9e6f;border-radius:8px;cursor:pointer"
+           onclick="select('숲 풍경')">
+        <text x="50%" y="50%" text-anchor="middle" dy=".3em" fill="white" font-size="14">🌲</text>
+      </svg>
+      <img src="" alt="숲 풍경" width="0" height="0" style="display:none" />
+      <figcaption>숲 풍경</figcaption>
+    </figure>
+  </div>
+
+  <p id="selected"></p>
+
+  <script>
+    function select(name) {
+      document.getElementById('selected').textContent = '선택됨: ' + name;
+    }
+  </script>
+</body>
+</html>

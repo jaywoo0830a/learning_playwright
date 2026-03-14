@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>로그인</title>
+  <style>
+    body { font-family: sans-serif; max-width: 400px; margin: 60px auto; }
+    label { display: block; margin-top: 12px; font-weight: bold; }
+    input { width: 100%; padding: 8px; margin-top: 4px; box-sizing: border-box; }
+    button { margin-top: 16px; padding: 10px 24px; cursor: pointer; }
+    #result { margin-top: 20px; font-size: 1.1em; display: none; }
+    #result.success { color: green; display: block; }
+    #result.error   { color: red;   display: block; }
+  </style>
+</head>
+<body>
+  <h1>로그인</h1>
+  <form id="login-form">
+    <label for="email">이메일</label>
+    <input id="email" type="email" name="email" />
+
+    <label for="password">비밀번호</label>
+    <input id="password" type="password" name="password" />
+
+    <button type="submit">로그인</button>
+  </form>
+  <p id="result"></p>
+
+  <script>
+    document.getElementById('login-form').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const email    = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      const result   = document.getElementById('result');
+
+      if (email === 'user@test.com' && password === 'secret123') {
+        result.textContent = '로그인 성공! 환영합니다.';
+        result.className   = 'success';
+      } else {
+        result.textContent = '이메일 또는 비밀번호가 틀렸습니다.';
+        result.className   = 'error';
+      }
+    });
+  </script>
+</body>
+</html>

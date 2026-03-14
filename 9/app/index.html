@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>배송 옵션</title>
+  <style>
+    body { font-family: sans-serif; max-width: 480px; margin: 60px auto; }
+    .field { margin: 16px 0; }
+    label { display: block; font-weight: bold; margin-bottom: 6px; }
+    select { width: 100%; padding: 8px; font-size: 1em; }
+    #delivery-info { margin-top: 20px; padding: 14px; background: #f5f5f5;
+                     border-radius: 6px; display: none; }
+    #delivery-info.show { display: block; }
+  </style>
+</head>
+<body>
+  <h1>배송 옵션 선택</h1>
+
+  <div class="field">
+    <label for="delivery">배송 방법</label>
+    <select id="delivery" name="delivery">
+      <option value="">-- 선택하세요 --</option>
+      <option value="standard">일반 배송 (3~5일)</option>
+      <option value="express">빠른 배송 (1~2일)</option>
+      <option value="same-day">당일 배송</option>
+    </select>
+  </div>
+
+  <div class="field">
+    <label for="quantity">수량</label>
+    <select id="quantity" name="quantity">
+      <option value="1">1개</option>
+      <option value="2">2개</option>
+      <option value="3">3개</option>
+      <option value="5">5개</option>
+      <option value="10">10개</option>
+    </select>
+  </div>
+
+  <button onclick="showInfo()">확인</button>
+  <div id="delivery-info"></div>
+
+  <script>
+    function showInfo() {
+      const delivery = document.getElementById('delivery').value;
+      const quantity = document.getElementById('quantity').value;
+      const info = document.getElementById('delivery-info');
+      if (!delivery) {
+        info.textContent = '배송 방법을 선택해주세요.';
+        info.className = 'show';
+        return;
+      }
+      const labels = {
+        'standard': '일반 배송',
+        'express': '빠른 배송',
+        'same-day': '당일 배송',
+      };
+      info.textContent = `선택: ${labels[delivery]}, ${quantity}개`;
+      info.className = 'show';
+    }
+  </script>
+</body>
+</html>

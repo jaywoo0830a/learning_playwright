@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>검색 앱</title>
+  <style>
+    body { font-family: sans-serif; max-width: 500px; margin: 60px auto; }
+    input[type="search"] { width: 100%; padding: 10px; font-size: 1em; box-sizing: border-box; }
+    #results { margin-top: 20px; }
+    .result-item {
+      padding: 10px 14px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      margin-bottom: 8px;
+    }
+    #no-result { color: #888; display: none; }
+    #no-result.show { display: block; }
+  </style>
+</head>
+<body>
+  <h1>제품 검색</h1>
+  <input type="search" id="search-input" placeholder="제품명을 검색하세요" />
+  <div id="results"></div>
+  <p id="no-result">검색 결과가 없습니다.</p>
+
+  <script>
+    const products = ["노트북 Pro", "무선 마우스", "기계식 키보드", "모니터 27인치", "USB 허브"];
+
+    document.getElementById('search-input').addEventListener('keydown', function(e) {
+      if (e.key !== 'Enter') return;
+      const query   = this.value.trim().toLowerCase();
+      const results = document.getElementById('results');
+      const noResult = document.getElementById('no-result');
+      const matched = products.filter(p => p.toLowerCase().includes(query));
+
+      results.innerHTML = '';
+      if (matched.length === 0) {
+        noResult.classList.add('show');
+      } else {
+        noResult.classList.remove('show');
+        matched.forEach(p => {
+          const div = document.createElement('div');
+          div.className = 'result-item';
+          div.textContent = p;
+          results.appendChild(div);
+        });
+      }
+    });
+  </script>
+</body>
+</html>
