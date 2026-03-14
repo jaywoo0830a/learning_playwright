@@ -66,7 +66,7 @@ fi
 if [[ "$1" == "all" ]]; then
     PROBLEMS=(1 2 3 4 5 6 7 8 9 10)
 elif [[ "$1" == "automation" ]]; then
-    PROBLEMS=(automation/1 automation/2 automation/3 automation/4 automation/5)
+    PROBLEMS=(automation/1 automation/2 automation/3 automation/4 automation/5 automation/6 automation/7 automation/8)
 else
     PROBLEMS=("$@")
 fi

@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>SE ONE 스타일 에디터 (iframe + contenteditable)</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: sans-serif; max-width: 760px; margin: 30px auto; padding: 0 20px; }
+    h1 { font-size: 1.3em; margin-bottom: 4px; }
+    .subtitle { font-size: 12px; color: #888; margin-bottom: 16px; }
+
+    /* SE ONE 전체 래퍼 */
+    .se-one-wrap {
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    /* 헤더 툴바 */
+    .se-one-header {
+      background: white;
+      border-bottom: 1px solid #eee;
+      padding: 8px 12px;
+      display: flex; gap: 6px; align-items: center;
+    }
+    .se-one-header button {
+      width: 32px; height: 32px;
+      border: 1px solid #e0e0e0;
+      background: white; border-radius: 6px;
+      cursor: pointer; font-size: 13px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .se-one-header button:hover { background: #f5f5f5; }
+    .se-one-header button.active {
+      background: #03c75a; color: white; border-color: #03c75a;
+    }
+    .se-one-header .sep {
+      width: 1px; height: 20px;
+      background: #e0e0e0; margin: 0 2px;
+    }
+
+    /* iframe 컨테이너 */
+    .se-one-body { position: relative; background: white; }
+    #se-one-frame {
+      width: 100%; height: 380px;
+      border: none; display: block;
+    }
+
+    /* 사이드 도구 (이미지/링크 삽입) */
+    .side-tools {
+      position: absolute; right: -44px; top: 20px;
+      display: flex; flex-direction: column; gap: 6px;
+    }
+    .side-tool-btn {
+      width: 36px; height: 36px;
+      background: white; border: 1px solid #ddd;
+      border-radius: 50%; cursor: pointer; font-size: 14px;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+    }
+
+    /* 푸터 */
+    .se-one-footer {
+      border-top: 1px solid #eee;
+      padding: 10px 14px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .se-one-footer .word-count { font-size: 12px; color: #999; }
+    .se-one-footer .btn-publish {
+      padding: 8px 20px; background: #03c75a;
+      color: white; border: none; border-radius: 6px;
+      font-size: 14px; font-weight: 600; cursor: pointer;
+    }
+
+    /* 결과 */
+    #result-area { margin-top: 16px; display: none; }
+    #result-area.show { display: block; }
+    #result-label { font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+    #result-box {
+      background: #f8f8f8; border: 1px solid #ddd;
+      border-radius: 6px; padding: 12px;
+      font-size: 13px; white-space: pre-wrap;
+      word-break: break-all; max-height: 140px; overflow-y: auto;
+    }
+  </style>
+</head>
+<body>
+  <h1>SE ONE 스타일 에디터</h1>
+  <p class="subtitle">iframe + contenteditable — 스마트에디터 ONE 패턴</p>
+
+  <div class="se-one-wrap">
+    <!-- 툴바 -->
+    <div class="se-one-header" id="se-toolbar">
+      <button id="tb-bold"      title="굵게"><b>B</b></button>
+      <button id="tb-italic"    title="기울임"><i>I</i></button>
+      <button id="tb-strike"    title="취소선"><s>S</s></button>
+      <div class="sep"></div>
+      <button id="tb-h2"        title="제목">H2</button>
+      <button id="tb-quote"     title="인용">"</button>
+      <div class="sep"></div>
+      <button id="tb-link"      title="링크 삽입">🔗</button>
+      <button id="tb-image"     title="이미지 삽입">🖼</button>
+      <div class="sep"></div>
+      <button id="tb-code"      title="코드 블록">&lt;/&gt;</button>
+    </div>
+
+    <!-- SE ONE 본문 iframe -->
+    <div class="se-one-body">
+      <iframe id="se-one-frame" title="SE ONE 본문 편집기"></iframe>
+    </div>
+
+    <!-- 푸터 -->
+    <div class="se-one-footer">
+      <span class="word-count" id="word-count">0자</span>
+      <button class="btn-publish" id="btn-publish">발행</button>
+    </div>
+  </div>
+
+  <!-- 발행 결과 -->
+  <div id="result-area">
+    <div id="result-label">발행된 내용:</div>
+    <div id="result-box"></div>
+  </div>
+
+  <script>
+    const frame = document.getElementById('se-one-frame');
+    let ed; // iframe 안의 contenteditable div
+
+    frame.src = 'about:blank';
+    frame.addEventListener('load', initSEONE);
+
+    function initSEONE() {
+      const doc = frame.contentDocument;
+      doc.open();
+      // SE ONE 핵심: designMode 대신 contenteditable div 사용
+      doc.write(`<!DOCTYPE html>
+<html><head>
+<meta charset="UTF-8">
+<style>
+  html, body { margin:0; padding:0; height:100%; }
+  #se-editor {
+    min-height: 360px;
+    padding: 20px 24px;
+    font-family: '맑은 고딕', 'Apple SD Gothic Neo', sans-serif;
+    font-size: 15px;
+    line-height: 1.9;
+    outline: none;
+    color: #1a1a1a;
+  }
+  #se-editor:empty::before {
+    content: '글을 작성해 보세요.';
+    color: #ccc;
+  }
+  /* SE ONE 컴포넌트 블록 스타일 */
+  .se-component { margin: 12px 0; }
+  blockquote.se-quote {
+    margin: 12px 0; padding: 12px 20px;
+    border-left: 4px solid #03c75a;
+    background: #f0fff7; color: #333;
+    font-style: italic;
+  }
+  pre.se-code {
+    background: #1e1e2e; color: #cdd6f4;
+    padding: 16px; border-radius: 8px;
+    font-family: monospace; font-size: 13px;
+    white-space: pre-wrap;
+  }
+  h2.se-heading {
+    font-size: 22px; font-weight: 700;
+    border-bottom: 2px solid #03c75a;
+    padding-bottom: 6px; margin: 16px 0 8px;
+  }
+</style>
+</head>
+<body>
+<div
+  id="se-editor"
+  contenteditable="true"
+  role="textbox"
+  aria-multiline="true"
+  aria-label="SE ONE 본문"
+  data-testid="se-one-editor"
+></div>
+</body></html>`);
+      doc.close();
+      ed = doc.getElementById('se-editor');
+
+      // 이벤트 리스너
+      ed.addEventListener('input', updateWordCount);
+      ed.addEventListener('keyup', syncToolbarState);
+      ed.addEventListener('mouseup', syncToolbarState);
+    }
+
+    // ── 툴바 명령 ────────────────────────────────────────────
+    function cmd(command, value) {
+      frame.contentWindow.focus();
+      // SE ONE 방식: execCommand 대신 직접 DOM 조작도 하지만
+      // 여기서는 execCommand 로 시뮬레이션
+      frame.contentDocument.execCommand(command, false, value || null);
+      syncToolbarState();
+    }
+
+    document.getElementById('tb-bold').onclick   = () => cmd('bold');
+    document.getElementById('tb-italic').onclick = () => cmd('italic');
+    document.getElementById('tb-strike').onclick = () => cmd('strikeThrough');
+
+    document.getElementById('tb-h2').onclick = () => {
+      frame.contentWindow.focus();
+      frame.contentDocument.execCommand('formatBlock', false, 'h2');
+      // h2 에 SE ONE 클래스 추가
+      const h2 = frame.contentDocument.querySelector('h2:not(.se-heading)');
+      if (h2) h2.classList.add('se-heading');
+      syncToolbarState();
+    };
+
+    document.getElementById('tb-quote').onclick = () => {
+      frame.contentWindow.focus();
+      frame.contentDocument.execCommand('formatBlock', false, 'blockquote');
+      const bq = frame.contentDocument.querySelector('blockquote:not(.se-quote)');
+      if (bq) bq.classList.add('se-quote');
+    };
+
+    document.getElementById('tb-code').onclick = () => {
+      frame.contentWindow.focus();
+      const sel = frame.contentWindow.getSelection();
+      const text = sel.toString() || '// 코드를 입력하세요';
+      const pre = frame.contentDocument.createElement('pre');
+      pre.className = 'se-code';
+      pre.textContent = text;
+      const range = sel.getRangeAt(0);
+      range.deleteContents();
+      range.insertNode(pre);
+    };
+
+    document.getElementById('tb-link').onclick = () => {
+      const url = window.prompt('링크 URL을 입력하세요:', 'https://');
+      if (url) cmd('createLink', url);
+    };
+
+    document.getElementById('tb-image').onclick = () => {
+      const url = window.prompt('이미지 URL을 입력하세요:', 'https://');
+      if (url) cmd('insertImage', url);
+    };
+
+    // ── 툴바 상태 동기화 ─────────────────────────────────────
+    function syncToolbarState() {
+      const doc = frame.contentDocument;
+      if (!doc) return;
+      document.getElementById('tb-bold').classList.toggle('active',
+        doc.queryCommandState('bold'));
+      document.getElementById('tb-italic').classList.toggle('active',
+        doc.queryCommandState('italic'));
+      document.getElementById('tb-strike').classList.toggle('active',
+        doc.queryCommandState('strikeThrough'));
+    }
+
+    // ── 글자 수 ───────────────────────────────────────────────
+    function updateWordCount() {
+      if (!ed) return;
+      const len = (ed.innerText || '').replace(/\n$/, '').length;
+      document.getElementById('word-count').textContent = len + '자';
+    }
+
+    // ── 발행 버튼 ────────────────────────────────────────────
+    document.getElementById('btn-publish').onclick = () => {
+      if (!ed) return;
+      const text = ed.innerText.trim();
+      document.getElementById('result-box').textContent = text || '(내용 없음)';
+      document.getElementById('result-area').className = 'show';
+    };
+  </script>
+</body>
+</html>

@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>SE2 스타일 에디터 (iframe + designMode)</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: sans-serif; max-width: 760px; margin: 30px auto; padding: 0 20px; }
+    h1 { font-size: 1.3em; margin-bottom: 4px; }
+    .subtitle { font-size: 12px; color: #888; margin-bottom: 16px; }
+
+    .se2-wrap { border: 1px solid #c8c8c8; border-radius: 4px; }
+
+    /* 툴바 */
+    .se2-toolbar {
+      background: #f5f5f5;
+      border-bottom: 1px solid #c8c8c8;
+      padding: 6px 10px;
+      display: flex; gap: 4px; flex-wrap: wrap;
+    }
+    .se2-toolbar button {
+      min-width: 30px; height: 26px;
+      padding: 0 8px;
+      border: 1px solid #c8c8c8;
+      background: white;
+      border-radius: 3px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .se2-toolbar button:hover { background: #e0e0e0; }
+    .se2-toolbar button.on { background: #0068c8; color: white; border-color: #0068c8; }
+    .se2-toolbar .sep {
+      width: 1px; background: #c8c8c8; margin: 0 4px; align-self: stretch;
+    }
+    .font-size-select {
+      height: 26px; border: 1px solid #c8c8c8;
+      border-radius: 3px; font-size: 12px; padding: 0 4px;
+    }
+
+    /* iframe 에디터 본문 */
+    #se2-frame {
+      width: 100%; height: 300px;
+      border: none; display: block;
+    }
+
+    /* 하단 바 */
+    .se2-bottom {
+      background: #f5f5f5;
+      border-top: 1px solid #c8c8c8;
+      padding: 6px 10px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .se2-bottom .info { font-size: 11px; color: #888; }
+    .se2-bottom button {
+      padding: 5px 14px; font-size: 13px;
+      background: #0068c8; color: white;
+      border: none; border-radius: 3px; cursor: pointer;
+    }
+
+    /* 결과 출력 */
+    #result-area {
+      margin-top: 16px; display: none;
+    }
+    #result-area.show { display: block; }
+    #result-area h3 { font-size: 13px; margin-bottom: 6px; }
+    #result-html, #result-text {
+      background: #f5f5f5; border: 1px solid #ddd;
+      border-radius: 4px; padding: 10px;
+      font-family: monospace; font-size: 12px;
+      white-space: pre-wrap; word-break: break-all;
+      max-height: 120px; overflow-y: auto;
+      margin-bottom: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>SE2 스타일 에디터</h1>
+  <p class="subtitle">iframe + document.designMode — 스마트에디터 2.x 패턴</p>
+
+  <div class="se2-wrap">
+    <!-- 툴바 -->
+    <div class="se2-toolbar" id="toolbar">
+      <button id="tb-bold"   title="굵게(Ctrl+B)"><b>B</b></button>
+      <button id="tb-italic" title="기울임(Ctrl+I)"><i>I</i></button>
+      <button id="tb-underline" title="밑줄(Ctrl+U)"><u>U</u></button>
+      <div class="sep"></div>
+      <select class="font-size-select" id="tb-fontsize" title="글자 크기">
+        <option value="2">10pt</option>
+        <option value="3" selected>12pt</option>
+        <option value="4">14pt</option>
+        <option value="5">18pt</option>
+        <option value="6">24pt</option>
+      </select>
+      <div class="sep"></div>
+      <button id="tb-left"   title="왼쪽 정렬">≡←</button>
+      <button id="tb-center" title="가운데 정렬">≡</button>
+      <button id="tb-right"  title="오른쪽 정렬">→≡</button>
+      <div class="sep"></div>
+      <button id="tb-ul" title="글머리 기호">• 목록</button>
+      <button id="tb-ol" title="번호 목록">1. 목록</button>
+      <div class="sep"></div>
+      <button id="tb-html" title="HTML 소스 보기">HTML</button>
+    </div>
+
+    <!-- iframe 에디터 -->
+    <iframe id="se2-frame" title="본문 편집 영역"></iframe>
+
+    <!-- 하단 바 -->
+    <div class="se2-bottom">
+      <span class="info" id="char-info">0 글자</span>
+      <button id="btn-submit">등록</button>
+    </div>
+  </div>
+
+  <!-- 결과 출력 영역 -->
+  <div id="result-area">
+    <h3>저장된 HTML:</h3>
+    <div id="result-html"></div>
+    <h3>순수 텍스트:</h3>
+    <div id="result-text"></div>
+  </div>
+
+  <script>
+    // ── iframe 초기화 ────────────────────────────────────────
+    const frame = document.getElementById('se2-frame');
+    let frameDoc;
+
+    frame.addEventListener('load', initEditor);
+    // src 없이 생성 후 write() 로 초기화 (SE2 방식)
+    frame.src = 'about:blank';
+
+    function initEditor() {
+      frameDoc = frame.contentDocument || frame.contentWindow.document;
+      frameDoc.open();
+      frameDoc.write(`<!DOCTYPE html>
+<html><head>
+<meta charset="UTF-8">
+<style>
+  body {
+    margin: 10px 14px;
+    font-family: '맑은 고딕', sans-serif;
+    font-size: 12pt;
+    line-height: 1.8;
+    outline: none;
+    min-height: 260px;
+  }
+  body:empty::before {
+    content: '내용을 입력하세요.';
+    color: #aaa;
+  }
+</style>
+</head><body></body></html>`);
+      frameDoc.close();
+      frameDoc.designMode = 'on';   // ← SE2 핵심: designMode 활성화
+
+      // 글자 수 카운터
+      frameDoc.addEventListener('input', updateCharCount);
+      frameDoc.addEventListener('keyup', updateToolbarState);
+      frameDoc.addEventListener('mouseup', updateToolbarState);
+    }
+
+    // ── 툴바 명령 실행 ───────────────────────────────────────
+    function execCmd(cmd, value) {
+      frame.contentWindow.focus();
+      frameDoc.execCommand(cmd, false, value);
+      updateToolbarState();
+    }
+
+    document.getElementById('tb-bold').onclick      = () => execCmd('bold');
+    document.getElementById('tb-italic').onclick    = () => execCmd('italic');
+    document.getElementById('tb-underline').onclick = () => execCmd('underline');
+    document.getElementById('tb-left').onclick      = () => execCmd('justifyLeft');
+    document.getElementById('tb-center').onclick    = () => execCmd('justifyCenter');
+    document.getElementById('tb-right').onclick     = () => execCmd('justifyRight');
+    document.getElementById('tb-ul').onclick        = () => execCmd('insertUnorderedList');
+    document.getElementById('tb-ol').onclick        = () => execCmd('insertOrderedList');
+    document.getElementById('tb-fontsize').onchange = function() {
+      execCmd('fontSize', this.value);
+    };
+
+    // HTML 소스 토글
+    let htmlMode = false;
+    document.getElementById('tb-html').onclick = () => {
+      if (!htmlMode) {
+        const html = frameDoc.body.innerHTML;
+        frameDoc.body.innerText = html;
+        frameDoc.designMode = 'off';
+        htmlMode = true;
+        document.getElementById('tb-html').classList.add('on');
+      } else {
+        const html = frameDoc.body.innerText;
+        frameDoc.body.innerHTML = html;
+        frameDoc.designMode = 'on';
+        htmlMode = false;
+        document.getElementById('tb-html').classList.remove('on');
+      }
+    };
+
+    // ── 툴바 상태 업데이트 ────────────────────────────────────
+    function updateToolbarState() {
+      if (!frameDoc) return;
+      document.getElementById('tb-bold').classList.toggle('on',
+        frameDoc.queryCommandState('bold'));
+      document.getElementById('tb-italic').classList.toggle('on',
+        frameDoc.queryCommandState('italic'));
+      document.getElementById('tb-underline').classList.toggle('on',
+        frameDoc.queryCommandState('underline'));
+    }
+
+    // ── 글자 수 ───────────────────────────────────────────────
+    function updateCharCount() {
+      if (!frameDoc) return;
+      const len = (frameDoc.body.innerText || '').replace(/\n$/, '').length;
+      document.getElementById('char-info').textContent = len + ' 글자';
+    }
+
+    // ── 등록 버튼 ────────────────────────────────────────────
+    document.getElementById('btn-submit').onclick = () => {
+      if (!frameDoc) return;
+      const html = frameDoc.body.innerHTML;
+      const text = frameDoc.body.innerText;
+      document.getElementById('result-html').textContent = html;
+      document.getElementById('result-text').textContent = text;
+      document.getElementById('result-area').className = 'show';
+    };
+  </script>
+</body>
+</html>

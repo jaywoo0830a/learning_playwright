@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>SE ONE 복합 에디터 — 인라인 툴바 + 블록 컴포넌트</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: sans-serif; max-width: 760px; margin: 30px auto; padding: 0 20px; }
+    h1 { font-size: 1.3em; margin-bottom: 4px; }
+    .subtitle { font-size: 12px; color: #888; margin-bottom: 16px; }
+
+    .editor-shell {
+      border: 1px solid #ddd; border-radius: 8px; background: white;
+    }
+
+    /* 상단 메뉴 (파일명 등) */
+    .editor-topbar {
+      padding: 10px 16px;
+      border-bottom: 1px solid #eee;
+      display: flex; gap: 12px; align-items: center;
+    }
+    #doc-title {
+      font-size: 16px; font-weight: 600;
+      border: none; outline: none; flex: 1;
+      color: #1a1a1a;
+    }
+    #doc-title::placeholder { color: #ccc; }
+    .save-status {
+      font-size: 11px; color: #aaa;
+    }
+    .save-status.saved { color: #03c75a; }
+
+    /* iframe 에디터 */
+    .editor-body { position: relative; }
+    #complex-frame {
+      width: 100%; height: 400px;
+      border: none; display: block;
+    }
+
+    /* 인라인 툴바 (텍스트 선택 시 팝업) */
+    #inline-toolbar {
+      position: fixed; display: none;
+      background: #1a1a1a; border-radius: 6px;
+      padding: 4px 6px;
+      gap: 2px; z-index: 9999;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+    #inline-toolbar.show { display: flex; }
+    #inline-toolbar button {
+      width: 28px; height: 28px; border: none;
+      background: transparent; color: white;
+      border-radius: 4px; cursor: pointer; font-size: 13px;
+    }
+    #inline-toolbar button:hover { background: rgba(255,255,255,0.15); }
+    #inline-toolbar .sep { width: 1px; background: #444; margin: 0 2px; }
+
+    /* 블록 추가 버튼 (+ 버튼) */
+    #block-add-btn {
+      position: absolute; left: -36px;
+      width: 28px; height: 28px;
+      border: 1px solid #ddd; background: white;
+      border-radius: 50%; font-size: 18px; line-height: 1;
+      cursor: pointer; display: none;
+      align-items: center; justify-content: center;
+      color: #888;
+    }
+    #block-add-btn.show { display: flex; }
+
+    /* 블록 추가 메뉴 */
+    #block-menu {
+      position: absolute; left: -10px;
+      background: white; border: 1px solid #ddd;
+      border-radius: 8px; padding: 6px;
+      display: none; z-index: 100;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+      width: 200px;
+    }
+    #block-menu.show { display: block; }
+    #block-menu button {
+      width: 100%; text-align: left;
+      padding: 8px 12px; border: none; background: none;
+      border-radius: 6px; cursor: pointer; font-size: 13px;
+      color: #333;
+    }
+    #block-menu button:hover { background: #f5f5f5; }
+
+    /* 하단 */
+    .editor-footer {
+      border-top: 1px solid #eee;
+      padding: 10px 16px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .char-count { font-size: 12px; color: #999; }
+    .btn-row { display: flex; gap: 8px; }
+    .btn-row button {
+      padding: 7px 18px; border-radius: 6px;
+      font-size: 13px; cursor: pointer; border: 1px solid #ddd;
+    }
+    #btn-save-draft { background: white; }
+    #btn-publish-complex {
+      background: #03c75a; color: white;
+      border-color: #03c75a; font-weight: 600;
+    }
+
+    /* 결과 */
+    #final-result { margin-top: 16px; display: none; }
+    #final-result.show { display: block; }
+    #final-result h3 { font-size: 13px; margin-bottom: 8px; }
+    .result-item {
+      background: #f8f8f8; border: 1px solid #eee;
+      border-radius: 6px; padding: 10px 12px;
+      font-size: 13px; margin-bottom: 8px;
+    }
+    .result-item label { font-weight: 600; color: #555; display: block; margin-bottom: 4px; }
+    .result-item .val { white-space: pre-wrap; word-break: break-all; color: #333; }
+  </style>
+</head>
+<body>
+  <h1>SE ONE 복합 에디터</h1>
+  <p class="subtitle">인라인 툴바 + 블록 컴포넌트 + 자동 저장 — 실전 패턴</p>
+
+  <div class="editor-shell">
+    <!-- 제목 입력 -->
+    <div class="editor-topbar">
+      <input
+        id="doc-title"
+        type="text"
+        placeholder="제목을 입력하세요"
+        data-testid="doc-title"
+        maxlength="100"
+      />
+      <span class="save-status" id="save-status">저장되지 않음</span>
+    </div>
+
+    <!-- 본문 에디터 (iframe) -->
+    <div class="editor-body" id="editor-body">
+      <iframe id="complex-frame" title="본문 에디터"></iframe>
+      <!-- 인라인 툴바 -->
+      <div id="inline-toolbar">
+        <button id="itb-bold" title="굵게"><b>B</b></button>
+        <button id="itb-italic" title="기울임"><i>I</i></button>
+        <button id="itb-strike" title="취소선"><s>S</s></button>
+        <div class="sep"></div>
+        <button id="itb-link" title="링크">🔗</button>
+      </div>
+      <!-- + 버튼 -->
+      <div id="block-add-btn" title="블록 추가">+</div>
+      <!-- 블록 메뉴 -->
+      <div id="block-menu">
+        <button data-block="paragraph">📝 텍스트</button>
+        <button data-block="heading">H 제목</button>
+        <button data-block="quote">❝ 인용</button>
+        <button data-block="code">💻 코드</button>
+        <button data-block="divider">── 구분선</button>
+      </div>
+    </div>
+
+    <!-- 푸터 -->
+    <div class="editor-footer">
+      <span class="char-count" id="char-count">0자</span>
+      <div class="btn-row">
+        <button id="btn-save-draft">임시저장</button>
+        <button id="btn-publish-complex">발행</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 발행 결과 -->
+  <div id="final-result">
+    <h3>발행 결과</h3>
+    <div class="result-item">
+      <label>제목</label>
+      <div class="val" id="final-title"></div>
+    </div>
+    <div class="result-item">
+      <label>본문 텍스트</label>
+      <div class="val" id="final-body"></div>
+    </div>
+    <div class="result-item">
+      <label>본문 HTML</label>
+      <div class="val" id="final-html"></div>
+    </div>
+  </div>
+
+  <script>
+    const cframe = document.getElementById('complex-frame');
+    let ced; // contenteditable div
+
+    cframe.src = 'about:blank';
+    cframe.addEventListener('load', initComplexEditor);
+
+    function initComplexEditor() {
+      const doc = cframe.contentDocument;
+      doc.open();
+      doc.write(`<!DOCTYPE html>
+<html><head>
+<meta charset="UTF-8">
+<style>
+  html,body{margin:0;padding:0;height:100%;}
+  #body{
+    min-height:390px; padding:16px 24px;
+    font-family:'맑은 고딕','Apple SD Gothic Neo',sans-serif;
+    font-size:15px; line-height:1.9; outline:none; color:#1a1a1a;
+  }
+  #body:empty::before{content:'글을 작성해 보세요.';color:#ccc;}
+  h2.se-h2{font-size:22px;font-weight:700;margin:16px 0 8px;
+    border-bottom:2px solid #03c75a;padding-bottom:6px;}
+  blockquote.se-bq{margin:10px 0;padding:12px 20px;
+    border-left:4px solid #03c75a;background:#f0fff7;font-style:italic;}
+  pre.se-pre{background:#1e1e2e;color:#cdd6f4;padding:14px;
+    border-radius:8px;font-family:monospace;font-size:13px;
+    white-space:pre-wrap;}
+  hr.se-hr{border:none;border-top:2px solid #eee;margin:16px 0;}
+  a{color:#03c75a;}
+</style>
+</head>
+<body>
+<div id="body"
+  contenteditable="true"
+  role="textbox"
+  aria-multiline="true"
+  aria-label="본문 편집"
+  data-testid="complex-editor-body"
+></div>
+</body></html>`);
+      doc.close();
+      ced = doc.getElementById('body');
+      ced.addEventListener('input', onBodyInput);
+
+      // 텍스트 선택 → 인라인 툴바
+      doc.addEventListener('mouseup', showInlineToolbar);
+      doc.addEventListener('keyup',   showInlineToolbar);
+      doc.addEventListener('selectionchange', maybeHideToolbar);
+
+      // + 버튼 표시
+      ced.addEventListener('click', showBlockAddBtn);
+    }
+
+    // ── 인라인 툴바 ──────────────────────────────────────────
+    const itb = document.getElementById('inline-toolbar');
+
+    function showInlineToolbar() {
+      const sel = cframe.contentWindow.getSelection();
+      if (!sel || sel.isCollapsed) { itb.className = ''; return; }
+      const range = sel.getRangeAt(0);
+      const rect  = range.getBoundingClientRect();
+      if (rect.width === 0) { itb.className = ''; return; }
+      itb.style.left = (rect.left + rect.width / 2 - 60) + 'px';
+      itb.style.top  = (rect.top - 44 + window.scrollY) + 'px';
+      itb.className = 'show';
+    }
+    function maybeHideToolbar() {
+      const sel = cframe.contentWindow.getSelection();
+      if (sel && sel.isCollapsed) itb.className = '';
+    }
+
+    function icmd(c, v) {
+      cframe.contentWindow.focus();
+      cframe.contentDocument.execCommand(c, false, v || null);
+    }
+    document.getElementById('itb-bold').onclick   = () => icmd('bold');
+    document.getElementById('itb-italic').onclick = () => icmd('italic');
+    document.getElementById('itb-strike').onclick = () => icmd('strikeThrough');
+    document.getElementById('itb-link').onclick   = () => {
+      const url = window.prompt('URL:', 'https://');
+      if (url) icmd('createLink', url);
+    };
+
+    // ── + 블록 버튼 ──────────────────────────────────────────
+    const addBtn  = document.getElementById('block-add-btn');
+    const blkMenu = document.getElementById('block-menu');
+    let addBtnTop = 0;
+
+    function showBlockAddBtn(e) {
+      const rect = cframe.getBoundingClientRect();
+      addBtnTop = e.clientY - rect.top + cframe.scrollTop;
+      addBtn.style.top = (addBtnTop - 14) + 'px';
+      addBtn.className = 'show';
+      blkMenu.className = '';
+    }
+
+    addBtn.onclick = (e) => {
+      e.stopPropagation();
+      blkMenu.style.top = (addBtnTop + 10) + 'px';
+      blkMenu.className = 'show';
+    };
+
+    document.addEventListener('click', (e) => {
+      if (!addBtn.contains(e.target) && !blkMenu.contains(e.target)) {
+        addBtn.className = '';
+        blkMenu.className = '';
+      }
+    });
+
+    document.querySelectorAll('#block-menu button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const type = btn.dataset.block;
+        insertBlock(type);
+        addBtn.className = '';
+        blkMenu.className = '';
+      });
+    });
+
+    function insertBlock(type) {
+      cframe.contentWindow.focus();
+      const doc = cframe.contentDocument;
+      let el;
+      switch (type) {
+        case 'heading':
+          doc.execCommand('formatBlock', false, 'h2');
+          doc.querySelector('h2:not(.se-h2)')?.classList.add('se-h2');
+          return;
+        case 'quote':
+          el = doc.createElement('blockquote');
+          el.className = 'se-bq';
+          el.textContent = '인용문을 입력하세요';
+          break;
+        case 'code':
+          el = doc.createElement('pre');
+          el.className = 'se-pre';
+          el.textContent = '// 코드를 입력하세요';
+          break;
+        case 'divider':
+          el = doc.createElement('hr');
+          el.className = 'se-hr';
+          break;
+        default:
+          doc.execCommand('insertParagraph');
+          return;
+      }
+      if (el) {
+        const sel = cframe.contentWindow.getSelection();
+        if (sel && !sel.isCollapsed) {
+          const range = sel.getRangeAt(0);
+          range.collapse(false);
+          range.insertNode(el);
+        } else {
+          ced.appendChild(el);
+        }
+      }
+    }
+
+    // ── 자동 저장 상태 ───────────────────────────────────────
+    let saveTimer = null;
+    function onBodyInput() {
+      const len = (ced.innerText || '').replace(/\n$/, '').length;
+      document.getElementById('char-count').textContent = len + '자';
+      const st = document.getElementById('save-status');
+      st.textContent = '변경됨';
+      st.className = 'save-status';
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(() => {
+        st.textContent = '자동 저장됨';
+        st.className = 'save-status saved';
+      }, 1500);
+    }
+
+    document.getElementById('doc-title').addEventListener('input', onBodyInput);
+
+    // ── 임시저장 버튼 ────────────────────────────────────────
+    document.getElementById('btn-save-draft').onclick = () => {
+      const st = document.getElementById('save-status');
+      st.textContent = '임시저장 완료';
+      st.className = 'save-status saved';
+    };
+
+    // ── 발행 버튼 ────────────────────────────────────────────
+    document.getElementById('btn-publish-complex').onclick = () => {
+      if (!ced) return;
+      const title = document.getElementById('doc-title').value;
+      const text  = ced.innerText.trim();
+      const html  = ced.innerHTML;
+      document.getElementById('final-title').textContent = title || '(제목 없음)';
+      document.getElementById('final-body').textContent  = text  || '(내용 없음)';
+      document.getElementById('final-html').textContent  = html;
+      document.getElementById('final-result').className  = 'show';
+      const st = document.getElementById('save-status');
+      st.textContent = '발행 완료';
+      st.className = 'save-status saved';
+    };
+  </script>
+</body>
+</html>
