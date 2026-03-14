@@ -3,9 +3,11 @@
 # run/test.sh  —  문제별 테스트 실행
 #
 # 사용법:
-#   bash run/test.sh 1        # 1번 문제만
-#   bash run/test.sh 1 2 5    # 1, 2, 5번 문제
-#   bash run/test.sh all      # 전체 (1~10)
+#   bash run/test.sh 1            # 1번 문제만
+#   bash run/test.sh 1 2 5        # 1, 2, 5번 문제
+#   bash run/test.sh all          # 기초 전체 (1~10)
+#   bash run/test.sh automation/1 # 실전 1번만
+#   bash run/test.sh automation   # 실전 전체 (1~5)
 # ─────────────────────────────────────────────────────────────
 set -e
 
@@ -22,15 +24,15 @@ cd "$ROOT"
 HOST="127.0.0.1"   # 서버 호스트 (기본: 로컬호스트)
 BASE_PORT=8100     # 기준 포트 — 실제 포트 = BASE_PORT + 문제번호
 #                  #   문제 1 → 8101, 문제 2 → 8102, ...
+#                  #   실전 automation/1 → 8201, automation/2 → 8202, ...
 # ══════════════════════════════════════════════════════════════
 
 # .env 파일이 있으면 HOST / BASE_PORT 덮어쓰기
 ENV_FILE="$ROOT/.env"
 if [[ -f "$ENV_FILE" ]]; then
     while IFS='=' read -r key value; do
-        # 빈 줄·주석 무시
         [[ -z "$key" || "$key" == \#* ]] && continue
-        key="${key// /}"      # 공백 제거
+        key="${key// /}"
         value="${value// /}"
         case "$key" in
             HOST)      HOST="$value" ;;
@@ -53,9 +55,11 @@ PYTEST="$VENV/bin/pytest"
 
 # ── 인자 처리 ──────────────────────────────────────────────
 if [[ $# -eq 0 ]]; then
-    echo "사용법: bash run/test.sh <문제번호|all>"
+    echo "사용법: bash run/test.sh <문제번호|all|automation|automation/N>"
     echo "예시:   bash run/test.sh 1"
     echo "        bash run/test.sh all"
+    echo "        bash run/test.sh automation/1"
+    echo "        bash run/test.sh automation"
     exit 1
 fi
 
@@ -78,14 +82,25 @@ run_problem() {
     local DIR="$ROOT/$NUM"
     local APP_DIR="$DIR/app"
     local TEST_FILE="$DIR/test_solution.py"
-    # automation/N → 포트 8200+N, 일반 N → BASE_PORT+N
+
+    # ── 포트 계산 ─────────────────────────────────────────
+    # automation/1 → SUB=1, PORT=8201
+    # automation/2 → SUB=2, PORT=8202
+    # 일반 1       → PORT=8101
     local PORT
+    local SUB
     if [[ "$NUM" == automation/* ]]; then
-        local SUB="${NUM#automation/}"
+        SUB="${NUM#automation/}"          # "automation/1" → "1"
         PORT=$(( 8200 + SUB ))
     else
         PORT=$(( BASE_PORT + NUM ))
     fi
+
+    # 로그 파일명에 슬래시가 들어가지 않도록 치환
+    # "automation/1" → "automation_1"
+    local SAFE_NUM="${NUM//\//_}"
+    local LOG_FILE="/tmp/pw_server_${SAFE_NUM}.log"
+
     local URL="http://${HOST}:${PORT}"
 
     echo ""
@@ -105,18 +120,33 @@ run_problem() {
         return
     fi
 
+    # 혹시 같은 포트가 이미 사용 중이면 종료
+    lsof -ti tcp:"$PORT" | xargs kill -9 2>/dev/null || true
+
     # HTTP 서버 시작
     "$PYTHON" -m http.server "$PORT" \
         --directory "$APP_DIR" \
         --bind "$HOST" \
-        > /tmp/pw_server_$NUM.log 2>&1 &
+        > "$LOG_FILE" 2>&1 &
     SERVER_PID=$!
 
-    # 서버 준비 대기 (최대 3초)
-    for i in $(seq 1 15); do
-        if curl -s "$URL/" > /dev/null 2>&1; then break; fi
+    # 서버 준비 대기 (최대 5초, 25번 재시도)
+    local READY=0
+    for i in $(seq 1 25); do
+        if curl -s --max-time 1 "$URL/" > /dev/null 2>&1; then
+            READY=1
+            break
+        fi
         sleep 0.2
     done
+
+    if [[ $READY -eq 0 ]]; then
+        echo "  ❌ 서버가 시작되지 않았습니다 (포트 $PORT)"
+        echo "  로그: $LOG_FILE"
+        kill "$SERVER_PID" 2>/dev/null || true
+        ((FAIL++)) || true
+        return
+    fi
 
     # pytest 실행
     if BASE_URL="$URL" \
@@ -132,6 +162,7 @@ run_problem() {
         echo "  ❌ 문제 $NUM — FAILED"
     fi
 
+    # 서버 종료
     kill "$SERVER_PID" 2>/dev/null || true
     wait "$SERVER_PID" 2>/dev/null || true
 }
@@ -140,7 +171,7 @@ run_problem() {
 echo ""
 echo "🎭 Learning Playwright"
 echo "   HOST      = $HOST"
-echo "   BASE_PORT = $BASE_PORT  (문제 N → 포트 $((BASE_PORT+1))~$((BASE_PORT+10)))"
+echo "   BASE_PORT = $BASE_PORT"
 [[ -f "$ENV_FILE" ]] && echo "   설정 파일 = .env" || echo "   설정 파일 = 기본값 (없음)"
 
 for P in "${PROBLEMS[@]}"; do
