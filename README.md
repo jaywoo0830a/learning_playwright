@@ -27,6 +27,20 @@ bash run/test.sh all    # 전체 문제
 
 ---
 
+
+## 스크립트 전체 목록
+
+| 스크립트 | 설명 |
+|---|---|
+| `bash run/init.sh` | 최초 1회 — 가상환경 생성 + 패키지 설치 |
+| `bash run/test.sh N` | 헤드리스 테스트 (자동화, CI 용도) |
+| `bash run/headed.sh N` | 헤드 모드 — 브라우저를 직접 보면서 테스트 |
+| `bash run/headed.sh N --slowmo` | 슬로우 모션 500ms — 동작을 천천히 확인 |
+| `bash run/headed.sh N --slowmo 1000` | 슬로우 모션 1000ms |
+| `bash run/open.sh N` | Codegen — 클릭하면 Python 코드 자동 생성 |
+| `bash run/open.sh N --browser` | 브라우저만 열기 (codegen 없이) |
+| `bash run/serve.sh N` | 앱 서버만 띄우기 (수동 테스트용) |
+
 ## 문제 목록 (Basic)
 
 | # | 주제 | 핵심 개념 |
